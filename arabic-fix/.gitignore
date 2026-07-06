@@ -46,3 +46,9 @@ htmlcov/
 
 # Don't ignore the input — it's part of the demo
 !examples/sample_input.txt
+
+# mavis harness team definitions ARE part of the project
+# (.harness/ defines who works on this repo — keep it tracked)
+# .harness/ sessions/state still excluded below
+.harness/sessions/
+.harness/state/
