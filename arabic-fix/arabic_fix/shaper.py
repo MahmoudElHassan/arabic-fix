@@ -21,27 +21,36 @@ from typing import Optional
 
 try:  # arabic-reshaper is an optional dep at import time so the package
       # still loads if only BiDi / normalization are needed.
-    import arabic_reshaper  # type: ignore
-    from arabic_reshaper.reshaper_config import default_config  # type: ignore
+    import arabic_reshaper  # type: ignore[import-untyped]
+    from arabic_reshaper.reshaper_config import (  # type: ignore[import-untyped]
+        default_config as _default_config,
+    )
     _HAS_RESHAPER = True
-    _ImportError = None
+    _ImportError: Exception | None = None
 except Exception as _exc:  # pragma: no cover
-    arabic_reshaper = None  # type: ignore
-    default_config = None  # type: ignore
+    # mypy sees these names as Any (module is untyped), so plain `= None`
+    # works without an explicit ignore.
+    arabic_reshaper = None
+    _default_config = None
     _HAS_RESHAPER = False
     _ImportError = _exc
 
 
-def _build_reshaper(ligatures: bool):
+def _build_reshaper(ligatures: bool) -> "object":
     """Build an ArabicReshaper with tashkeel preservation + caller-controlled ligatures.
 
     We always build our own rather than using `arabic_reshaper.reshape()`
     so we can override `delete_harakat`. The library default strips
     diacritics silently — we don't want that.
-    """
-    from arabic_reshaper import ArabicReshaper
 
-    cfg = dict(default_config)  # type: ignore[arg-type]
+    Returns the reshaper object typed as `object` because arabic_reshaper
+    ships no py.typed marker; we only call `.reshape(text)` on it.
+    """
+    from arabic_reshaper import ArabicReshaper  # noqa: F401  (only used at runtime)
+
+    # `default_config` is dict[str, Any] at runtime; mypy sees it as
+    # `Literal[...]` which doesn't accept dict(). Cast through Any.
+    cfg = dict(_default_config)
     cfg["delete_harakat"] = False
     cfg["support_ligatures"] = ligatures
     return ArabicReshaper(configuration=cfg)
@@ -50,7 +59,7 @@ def _build_reshaper(ligatures: bool):
 # Cache one reshaper per (ligatures True / False). Identity cache —
 # reuse the same instance across calls so the library isn't rebuilt
 # every shape() invocation.
-_RESHAPERS: dict[bool, object] = {}
+_RESHAPERS: dict[bool, "object"] = {}
 
 
 def shape(text: str, *, ligatures: bool = True) -> str:
@@ -80,7 +89,10 @@ def shape(text: str, *, ligatures: bool = True) -> str:
     if reshaper is None:
         reshaper = _build_reshaper(ligatures)
         _RESHAPERS[ligatures] = reshaper
-    return reshaper.reshape(text)  # type: ignore[attr-defined]
+    # `reshaper.reshape` is typed by arabic-reshaper as Any -> Any.
+    # We promise the caller a str; assert at runtime via cast.
+    out: str = reshaper.reshape(text)  # type: ignore[attr-defined]
+    return out
 
 
 __all__ = ["shape"]

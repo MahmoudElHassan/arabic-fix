@@ -14,11 +14,12 @@ Skipping any step produces subtly-broken output in a different way:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any
 
 from .shaper import shape
 from .bidi import reorder
-from .normalize import normalize, contains_arabic
+from .normalize import normalize, contains_arabic, NormForm
+from .bidi import _RTL_LTR_TO_BIDI  # for normalizing base_dir at the API edge
 
 
 @dataclass
@@ -49,7 +50,38 @@ class FixReport:
         return self.input != self.output
 
 
-def fix(text: str, **opts) -> str:
+def _coerce_options(opts: dict[str, Any]) -> FixOptions:
+    """Build FixOptions from arbitrary user kwargs, rejecting unknown keys.
+
+    We do this rather than `FixOptions(**opts)` so a typo'd option name
+    fails loudly with a helpful message instead of silently producing
+    a dataclass missing that field.
+    """
+    known = {f for f in FixOptions.__dataclass_fields__}
+    unknown = set(opts) - known
+    if unknown:
+        raise TypeError(
+            f"unknown fix() option(s): {sorted(unknown)}; "
+            f"valid options: {sorted(known)}"
+        )
+    # Normalize bidi_base_dir to its long form ('rtl'/'ltr') if the
+    # caller passed the single-char bidi code ('R'/'L').
+    if "bidi_base_dir" in opts:
+        b = opts["bidi_base_dir"]
+        if isinstance(b, str) and b in {"R", "L"}:
+            opts["bidi_base_dir"] = "rtl" if b == "R" else "ltr"
+    # Narrow normalize_form if it was passed as a valid literal.
+    if "normalize_form" in opts:
+        f = opts["normalize_form"]
+        if f not in {"NFC", "NFD", "NFKC", "NFKD"}:
+            raise ValueError(
+                f"normalize_form must be one of NFC/NFD/NFKC/NFKD, got {f!r}"
+            )
+        opts["normalize_form"] = f
+    return FixOptions(**opts)
+
+
+def fix(text: str, **opts: Any) -> str:
     """One-call fix: shape, BiDi-reorder, normalize.
 
     Returns the fixed string. For diagnostics, use `fix_report()`.
@@ -61,13 +93,13 @@ def fix(text: str, **opts) -> str:
     >>> fix("Hello مرحبا 123")
     ...  # digits 123 end up on the left in display order
     """
-    options = FixOptions(**opts) if opts else FixOptions()
+    options = _coerce_options(opts) if opts else FixOptions()
     return _apply(text, options).output
 
 
-def fix_report(text: str, **opts) -> FixReport:
+def fix_report(text: str, **opts: Any) -> FixReport:
     """Same as `fix()` but returns a `FixReport` describing what happened."""
-    options = FixOptions(**opts) if opts else FixOptions()
+    options = _coerce_options(opts) if opts else FixOptions()
     return _apply(text, options)
 
 

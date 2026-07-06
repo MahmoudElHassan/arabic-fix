@@ -17,11 +17,12 @@ from __future__ import annotations
 from typing import Optional
 
 try:
-    from bidi.algorithm import get_display  # type: ignore
+    from bidi.algorithm import get_display  # type: ignore[import-untyped]
     _HAS_BIDI = True
-    _ImportError = None
+    _ImportError: Exception | None = None
 except Exception as _exc:  # pragma: no cover
-    get_display = None  # type: ignore
+    # bidi is untyped; plain `= None` is fine for mypy.
+    get_display = None
     _HAS_BIDI = False
     _ImportError = _exc
 

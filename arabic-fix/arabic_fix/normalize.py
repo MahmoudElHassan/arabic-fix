@@ -11,6 +11,7 @@ predictable hashing, fully compatible with the rest of the library.
 from __future__ import annotations
 
 import unicodedata
+from typing import Literal
 
 
 def normalize(text: str, form: str = "NFC") -> str:
@@ -33,7 +34,12 @@ def normalize(text: str, form: str = "NFC") -> str:
     form = form.upper()
     if form not in {"NFC", "NFD", "NFKC", "NFKD"}:
         raise ValueError(f"unknown normalization form: {form!r}")
-    return unicodedata.normalize(form, text)
+    # unicodedata.normalize wants a Literal[...] for the form arg;
+    # we've validated it above, so the cast is safe.
+    return unicodedata.normalize(form, text)  # type: ignore[arg-type]
+
+
+NormForm = Literal["NFC", "NFD", "NFKC", "NFKD"]
 
 
 def contains_arabic(text: str) -> bool:
