@@ -8,6 +8,11 @@ characters into the connected glyphs the eye expects.
 We wrap `arabic-reshaper` with a graceful fallback that returns the
 input unchanged when the optional dependency is missing, so the rest of
 the library still works.
+
+Note: `arabic-reshaper` 3.0.0's `default_config` has
+`delete_harakat=True`. We override that to **preserve tashkeel**
+(matches `agents/eval_cases.md` Case 3 — "Tashkeel preservation").
+Stripping diacritics silently is a content-loss bug.
 """
 
 from __future__ import annotations
@@ -17,12 +22,35 @@ from typing import Optional
 try:  # arabic-reshaper is an optional dep at import time so the package
       # still loads if only BiDi / normalization are needed.
     import arabic_reshaper  # type: ignore
+    from arabic_reshaper.reshaper_config import default_config  # type: ignore
     _HAS_RESHAPER = True
     _ImportError = None
 except Exception as _exc:  # pragma: no cover
     arabic_reshaper = None  # type: ignore
+    default_config = None  # type: ignore
     _HAS_RESHAPER = False
     _ImportError = _exc
+
+
+def _build_reshaper(ligatures: bool):
+    """Build an ArabicReshaper with tashkeel preservation + caller-controlled ligatures.
+
+    We always build our own rather than using `arabic_reshaper.reshape()`
+    so we can override `delete_harakat`. The library default strips
+    diacritics silently — we don't want that.
+    """
+    from arabic_reshaper import ArabicReshaper
+
+    cfg = dict(default_config)  # type: ignore[arg-type]
+    cfg["delete_harakat"] = False
+    cfg["support_ligatures"] = ligatures
+    return ArabicReshaper(configuration=cfg)
+
+
+# Cache one reshaper per (ligatures True / False). Identity cache —
+# reuse the same instance across calls so the library isn't rebuilt
+# every shape() invocation.
+_RESHAPERS: dict[bool, object] = {}
 
 
 def shape(text: str, *, ligatures: bool = True) -> str:
@@ -39,37 +67,20 @@ def shape(text: str, *, ligatures: bool = True) -> str:
     Returns
     -------
     str
-        The shaped string. If `arabic-reshaper` is not installed, the
-        input is returned unchanged.
+        The shaped string. Tashkeel (diacritics) is preserved. If
+        `arabic-reshaper` is not installed, the input is returned
+        unchanged.
     """
     if not text:
         return text
     if not _HAS_RESHAPER:
-        return _shape_fallback(text)
+        return text  # graceful fallback: input passes through
 
-    if ligatures:
-        # Default reshaper uses a config that already enables ligatures,
-        # harakat preservation, and zwj support — good defaults.
-        return arabic_reshaper.reshape(text)  # type: ignore
-
-    # No-ligatures path: build a custom reshaper with ligatures off.
-    # Imported lazily so the default path stays fast.
-    from arabic_reshaper import ArabicReshaper
-    from arabic_reshaper.reshaper_config import (  # type: ignore
-        ReshaperConfig,
-    )
-    cfg = ReshaperConfig({"support_ligatures": False})
-    return ArabicReshaper(configuration=cfg).reshape(text)
-
-
-def _shape_fallback(text: str) -> str:
-    """Minimal shape fallback using the Unicode presentation-forms-B table.
-
-    This is intentionally simple — it does NOT produce contextual forms.
-    The full library should be installed via `pip install arabic-reshaper`
-    for production use.
-    """
-    return text
+    reshaper = _RESHAPERS.get(ligatures)
+    if reshaper is None:
+        reshaper = _build_reshaper(ligatures)
+        _RESHAPERS[ligatures] = reshaper
+    return reshaper.reshape(text)  # type: ignore[attr-defined]
 
 
 __all__ = ["shape"]
