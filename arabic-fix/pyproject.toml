@@ -33,6 +33,15 @@ dependencies = [
     "python-bidi>=0.4.2",
 ]
 
+[project.optional-dependencies]
+# Dev deps for tests, lint, type check. Install with:
+#   pip install -e ".[dev]"
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "mypy>=1.7",
+]
+
 [project.urls]
 Homepage = "https://github.com/your-org/arabic-fix"
 Issues = "https://github.com/your-org/arabic-fix/issues"
@@ -45,3 +54,23 @@ where = ["."]
 
 [tool.setuptools.package-data]
 arabic_fix = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --tb=short"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+files = ["arabic_fix"]
+show_error_codes = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_return_any = true
