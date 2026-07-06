@@ -40,14 +40,26 @@ def shape(text: str, *, ligatures: bool = True) -> str:
     -------
     str
         The shaped string. If `arabic-reshaper` is not installed, the
-        input is returned unchanged and a one-shot warning is printed.
+        input is returned unchanged.
     """
     if not text:
         return text
     if not _HAS_RESHAPER:
         return _shape_fallback(text)
-    cfg = {"use_ligatures": ligatures}
-    return arabic_reshaper.reshape(text, configuration=cfg)  # type: ignore
+
+    if ligatures:
+        # Default reshaper uses a config that already enables ligatures,
+        # harakat preservation, and zwj support — good defaults.
+        return arabic_reshaper.reshape(text)  # type: ignore
+
+    # No-ligatures path: build a custom reshaper with ligatures off.
+    # Imported lazily so the default path stays fast.
+    from arabic_reshaper import ArabicReshaper
+    from arabic_reshaper.reshaper_config import (  # type: ignore
+        ReshaperConfig,
+    )
+    cfg = ReshaperConfig({"support_ligatures": False})
+    return ArabicReshaper(configuration=cfg).reshape(text)
 
 
 def _shape_fallback(text: str) -> str:

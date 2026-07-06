@@ -26,6 +26,10 @@ except Exception as _exc:  # pragma: no cover
     _ImportError = _exc
 
 
+# python-bidi v0.6+ uses single-char codes for base_dir
+_RTL_LTR_TO_BIDI = {"rtl": "R", "ltr": "L"}
+
+
 def reorder(
     text: str,
     *,
@@ -41,7 +45,8 @@ def reorder(
         unshaped text here — shaping is a separate step.
     base_dir:
         'rtl' (default) or 'ltr'. Set 'ltr' if the dominant run is
-        English with an Arabic substring.
+        English with an Arabic substring. Internally translated to
+        python-bidi's 'R' / 'L' codes.
     upper_is_rtl:
         Treat runs of uppercase Latin as RTL. Almost never what you
         want; default False.
@@ -56,9 +61,10 @@ def reorder(
         return text
     if not _HAS_BIDI:
         return text
+    bidi_dir = _RTL_LTR_TO_BIDI.get(base_dir.lower(), base_dir)
     return get_display(  # type: ignore
         text,
-        base_dir=base_dir,
+        base_dir=bidi_dir,
         upper_is_rtl=upper_is_rtl,
     )
 
