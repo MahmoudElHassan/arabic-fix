@@ -9,7 +9,7 @@
 > with the same fidelity as English — because the tools and instructions are
 > already in their workflow, not because every maintainer re-solves it.
 
-## Current state (as of 2026-07-06)
+## Current state (as of 2026-07-07)
 
 | Layer | Status | Gap to ship |
 |---|---|---|
@@ -19,8 +19,8 @@
 | `designs/tokens.json` | 15 tokens, mixed format | Convert to pure JSON, ≥50 tokens, 3 export formats |
 | `designs/font-stack.md` | Solid | — |
 | `designs/rtl-rules.md` | Solid | — |
-| Linter | Missing | New build |
-| Distribution | Missing | PyPI + 3 harness examples |
+| Linter | Missing | v0.5.0 build (scope-cut) |
+| Distribution | Missing | PyPI at v0.4.0; adoption at v0.6.0 |
 
 **Overall: ~25% done.** Library works at byte level (real reshape confirmed via `xxd`).
 
@@ -60,7 +60,7 @@
 
 **Stop condition:** ≥3 real LLM runs produce correct output for ≥3 eval cases without further prompting.
 
-### v0.4.0 — Design tokens
+### v0.4.0 — Design tokens + first public release
 **Effort:** 1–2 days
 
 **Deliverables:**
@@ -68,27 +68,55 @@
 - All spacing/direction tokens use logical properties only (no `left`/`right`)
 - `examples/integrations/style-dictionary/` — exports to CSS variables, Tailwind config, Figma token JSON
 - `examples/sample-arabic-page.html` — sample rendering with all token categories
+- **README rewrite** — installation, usage, architecture diagram, links to eval cases + tokens + corpus. Anyone landing on the repo or PyPI page can grok it in 60 seconds.
+- **First PyPI release** as `arabic-fix` v0.4.0. Library + tokens. `pip install arabic-fix` works globally.
 
-**Stop condition:** 50+ tokens, 3 export formats work, sample page renders correctly.
+**Why PyPI moved here:** the linter depends on the library, but the library is useful on its own. Don't gate public access on the linter shipping.
 
-### v0.5.0 — Linter
+**Stop condition:** 50+ tokens, 3 export formats work, sample page renders correctly, README rewrite reviewed, `pip install arabic-fix` works in a clean venv.
+
+### v0.5.0 — Linter (scope-cut)
 **Effort:** 2–3 days
 
-**Deliverables:**
-- `arabic-fix-lint` CLI — detects: missing `dir` on Arabic HTML, mixed BiDi without isolation, RTL CSS mistakes, font-family without Arabic coverage, Latin digits in Arabic-number context
-- `.github/hooks/pre-commit` and a GitHub Action that runs the linter on `.md` / `.html` / `.css` changes
-- PyPI release of `arabic-fix` with both `arabic-fix` and `arabic-fix-lint` commands
+**Deliverables — scope cut from 5 detectors to 2 for v0.5.0:**
+- ✅ Detect: **missing `dir` on Arabic HTML** (highest-signal rule — direct cite from real bugs)
+- ✅ Detect: **RTL CSS mistakes** (`margin-left` instead of `margin-inline-start`, `letter-spacing` on Arabic)
+- ⏸ Defer to v0.6.0+: font-family Arabic glyph coverage, mixed-BiDi isolation, Latin digits in Arabic-number context. These need a font DB or fontTools at runtime — too much weight for v0.5.0.
+- `arabic-fix-lint` CLI as a subcommand of `arabic-fix` (not a separate package).
+- **GitHub Action** that runs the linter on `.html` / `.css` / `.md` changes — generic, harness-agnostic.
+- **No harness-specific hooks** in v0.5.0. Wait for a maintainer to ask.
 
-**Stop condition:** linter catches the 10 eval cases (true positive), doesn't false-positive on Latin-only / empty / pass-through cases.
+**Why the cut:** the 5-detector scope was overambitious for the input data we have. Two high-confidence rules ship now; the others wait for evidence that they catch real bugs in the wild.
 
-### v0.6.0 — Adoption
+**Stop condition:** linter catches the 10 eval cases (true positive on the 2 supported rules), doesn't false-positive on Latin-only / empty / pass-through cases.
+
+### v0.6.0 — Adoption (with measurement + fallback)
 **Effort:** ongoing
 
 **Deliverables:**
 - Public landing page with live demo
 - `examples/integrations/` — Cursor / Codex / OpenCode wiring examples
 - 1 reference PR to a public harness
-- README rewrite with the full story
+- **Measurement (added per mavis-doctor review):**
+  - PyPI download count (weekly check via pypistats)
+  - GitHub stars / forks / open issues
+  - Eval-case pass-rate in CI (must stay ≥95%)
+  - Harness integration count (count of `examples/integrations/` consumers)
+  - Reported in `docs/adoption-metrics.md` updated monthly
+- **Fallback (added per mavis-doctor review):** if 0/3 reference PRs land within 90 days, ship a separate repo `arabic-fix-integrations/` with reference wiring harnesses maintainers can copy from. Don't block adoption on other people's review cycles.
+- **Audience targeting:**
+  - Arabic-speaking devs → PyPI + GitHub discoverability + Arabic-language README section
+  - Arabic-product PMs → landing page + before/after visuals
+  - AI harness maintainers → `examples/integrations/` + minimal copy-paste path
+
+**Stop condition:** ≥1 harness ships a reference integration OR `arabic-fix-integrations/` repo has ≥3 community-contributed examples.
+
+## Risks I missed earlier (added)
+
+- **Standards move.** UAX #9 was last revised 2025; will be revised again. Library + linter must track or rot. Pin a check: every 6 months, verify against current Unicode revision.
+- **Browser divergence.** Chrome / Firefox / Safari handle BiDi differently. Library assumes terminal — what about mobile Safari? Note in `docs/before-after.md`.
+- **Locale specificity.** Roadmap assumes Modern Standard Arabic. Egyptian / Gulf / Maghrebi have different number conventions and plural rules. Eval case 8 is MSA. Note in `agents/eval_cases.md` per-case which locale/dialect.
+- **Single-maintainer (me) bottleneck.** Adoption at v0.6.0 needs issue response, PR review, blog posts. Before v0.6.0, identify a co-maintainer candidate.
 
 ## Rules of the road
 
@@ -97,7 +125,8 @@
 3. **Prove with bytes.** Any claim about reshape/BiDi must include `xxd` evidence in `docs/before-after.md`.
 4. **Cite Unicode standards with revision year.** UAX #9 (last revised 2025), UAX #15 (NFC/NFKC), UAX #29 (text segmentation), UTS #39 (security), UTS #55 (normalization idempotence).
 5. **Ship and tar after every meaningful change.** `arabic-fix.tar.gz` is the source of truth; never claim a milestone without rebuilding.
-6. **One-line summary each session.** Rein posts a one-line "what shipped" to the orchestrator at the end of each session.
+6. **One-line summary each phase.** Rein posts a one-line "what shipped" to the orchestrator at the end of each phase.
+7. **Measurement before more scope.** v0.6.0 measurement runs before any v0.7.0 work — adoption data must drive scope.
 
 ## Anti-patterns to avoid
 
@@ -107,7 +136,9 @@
 - ❌ Renaming mid-stream. `arabic-fix` is locked until v1.0.
 - ❌ Single monolithic system prompt. Always 3 splice-in-able sections.
 - ❌ Left/right CSS properties. Logical only — `margin-inline-start`, never `margin-left`.
+- ❌ Scope-creep detectors before measurement. Linter grows only when real bugs demand it.
 
 ## Current next step
 
-**v0.2.0 first deliverable:** `tests/test_shaper.py` covering the shaper's 4 cases (no ligatures / ligatures / empty string / Latin-only) + the Presentation Forms-B byte-level assertion that proved the fix in commit `a635d8a`.
+**v0.2.0, Phase A (now):** commit roadmap revision with the 6 mavis-doctor fixes baked in.
+**v0.2.0, Phase B (next, after approval):** test infrastructure skeleton — `tests/`, `conftest.py`, pytest config in `pyproject.toml`.
