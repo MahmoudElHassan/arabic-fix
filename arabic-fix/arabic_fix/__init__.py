@@ -7,7 +7,7 @@ order, and inconsistent Unicode normalization.
 
 from __future__ import annotations
 
-from .fixer import fix, FixOptions, FixReport
+from .fixer import fix, fix_report, FixOptions, FixReport
 
-__all__ = ["fix", "FixOptions", "FixReport"]
+__all__ = ["fix", "fix_report", "FixOptions", "FixReport"]
 __version__ = "0.1.0"
