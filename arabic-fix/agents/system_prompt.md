@@ -69,7 +69,32 @@ applies_to:
    Eastern Arabic-Indic digits `١٢٣` with U+066C thousands separator, not
    `123` with `,`. Match the user's locale, do not assume MSA defaults.
 
-### A.2 Forbidden patterns (read)
+### A.2 Detection trigger
+
+Use this regex to decide whether a string is Arabic (or contains Arabic):
+
+```python
+import re
+
+ARABIC_RE = re.compile(
+    r"[\u0600-\u06FF"           # Arabic
+    r"\u0750-\u077F"            # Arabic Supplement
+    r"\u08A0-\u08FF"            # Arabic Extended-A
+    r"\uFB50-\uFDFF"            # Arabic Presentation Forms-A (ligatures)
+    r"\uFE70-\uFEFF]"           # Arabic Presentation Forms-B (shaped)
+)
+
+if ARABIC_RE.search(text):
+    # contains Arabic — apply Section A rules
+    ...
+```
+
+**Caveats:**
+- A pure `[؀-ۿ]` regex (U+0600–U+06FF) misses **already-shaped** text (Presentation Forms-B, U+FE70–U+FEFF). For input that may have passed through shaping, include `[\uFE70-\uFEFF]` in the regex — or run NFC first then check.
+- For dialect disambiguation (Egyptian / Gulf / Maghrebi) — Arabic shares the Unicode block across dialects, so regex won't tell you. Use a locale tag (`lang="ar-EG"` etc.) from the source context, not the codepoints.
+- The forbidden pattern `re.match(r"^[\u0600-\u06FF]+$", text)` to assert "this is Arabic" **silently fails on shaped input** — use `ARABIC_RE.search()` instead.
+
+### A.3 Forbidden patterns (read)
 
 | Pattern | Why it's wrong | Replace with |
 |---|---|---|
@@ -78,12 +103,13 @@ applies_to:
 | Matching `^[\u0600-\u06FF]+$` for "is this Arabic" | Misses Arabic Presentation Forms-B (U+FE70–U+FEFF) already shaped, and matches Persian-only chars | Use Unicode script property or allow U+FE70–U+FEFF range |
 | Treating Eastern digits (`١٢٣`) and ASCII digits (`123`) as the same key | They're different codepoints | Pick one digit system per locale; convert with CLDR |
 
-### A.3 Self-check (read)
+### A.4 Self-check (read)
 
 - [ ] Did I reshape or reorder the user's Arabic? If yes, undo it.
 - [ ] Are my regex and string-match operations working in *logical* order?
 - [ ] For search/dedup, did I normalize to NFC before keying?
 - [ ] Did I detect mixed-script runs by BiDi level, not character class?
+- [ ] Did I detect Arabic with the full-range regex (incl. PF-B), not just `[\u0600-\u06FF]`?
 - [ ] Did I respect the user's locale for digits and plurals?
 
 ---

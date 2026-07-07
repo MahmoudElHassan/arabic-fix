@@ -351,3 +351,38 @@ def test_tashkeel_survives_reorder(text: str, expected_tashkeel: list[int]) -> N
             f"tashkeel codepoint U+{cp:04X} dropped by reorder(); "
             f"output codepoints: {[hex(c) for c in sorted(out_cps)]}"
         )
+
+
+# ──────────────────────────── base_dir validation (B1) ────────────────────────
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["R", "right", "rtl ", "", "rtlX", "ar-EG"],
+    ids=["single-char-bidi", "english-word", "trailing-space", "empty-string", "trailing-char", "locale-tag"],
+)
+def test_unknown_base_dir_raises_value_error(bad: str) -> None:
+    """An unknown `base_dir` MUST raise `ValueError`, not pass through silently.
+
+    Previously, `_RTL_LTR_TO_BIDI.get(base_dir.lower(), base_dir)` would
+    swallow any unknown key and let `python-bidi` either raise an opaque
+    error or fall back to a default. That masked caller bugs like typos
+    (`'rt;'`) or locale strings (`'ar-EG'`). Now we fail loud at the API edge.
+
+    Note: `'rtl'` and `'RTL'` (any case) ARE valid — we lowercase before
+    lookup. Only structurally-unknown keys (typos, locale tags, the
+    single-char bidi codes `'R'`/`'L'` which we don't accept at this
+    layer) raise.
+    """
+    with pytest.raises(ValueError) as exc_info:
+        reorder("السلام", base_dir=bad)
+    assert "base_dir" in str(exc_info.value)
+    assert repr(bad) in str(exc_info.value) or bad in str(exc_info.value)
+
+
+def test_case_insensitive_base_dir_accepted() -> None:
+    """`'RTL'` and `'LTR'` (uppercase) are accepted — we lowercase before lookup."""
+    # Should not raise.
+    out_rtl = reorder("Hello مرحبا", base_dir="RTL")
+    out_ltr = reorder("Hello مرحبا", base_dir="LTR")
+    assert out_rtl != out_ltr

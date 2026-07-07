@@ -36,7 +36,7 @@ PYTHON = sys.executable
 
 
 def _run_cli(*args: str, stdin: str | None = None, timeout: int = 30) -> subprocess.CompletedProcess:
-    """Invoke the CLI as a subprocess.
+    """Invoke the CLI as a subprocess with a *text* stdin.
 
     We use a subprocess (not in-process) because:
     - The CLI uses sys.stdin / sys.stdout / sys.stderr directly
@@ -49,6 +49,26 @@ def _run_cli(*args: str, stdin: str | None = None, timeout: int = 30) -> subproc
         input=stdin,
         capture_output=True,
         text=True,
+        timeout=timeout,
+        check=False,
+    )
+
+
+def _run_cli_bytes(
+    *args: str, stdin_bytes: bytes, timeout: int = 30
+) -> subprocess.CompletedProcess:
+    """Invoke the CLI with *raw bytes* on stdin (no client-side decoding).
+
+    Used to simulate a shell pipeline that pipes UTF-8 bytes to the CLI,
+    where the CLI itself must handle the decoding. Pairs with CLI1 fix
+    in `arabic_fix/cli.py`: stdin is read via
+    `io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')`, which forces
+    UTF-8 decoding regardless of the locale's preferred encoding.
+    """
+    return subprocess.run(
+        [PYTHON, "-m", "arabic_fix.cli", *args],
+        input=stdin_bytes,
+        capture_output=True,
         timeout=timeout,
         check=False,
     )
@@ -94,6 +114,52 @@ def test_stdin_dash_arg_writes_to_stdout() -> None:
     result = _run_cli("-", stdin=text)
     assert result.returncode == 0
     assert any(0xFE70 <= ord(c) <= 0xFEFF for c in result.stdout)
+
+
+def test_stdin_utf8_bytes_handled() -> None:
+    """Raw UTF-8 bytes piped on stdin must decode correctly.
+
+    Simulates a shell pipeline like `echo "العربية" | arabic-fix` where
+    the bytes arrive as UTF-8 (the locale's preferred encoding might be
+    ASCII, which would `UnicodeDecodeError` on `sys.stdin.read()`). The
+    CLI now wraps `sys.stdin.buffer` with `io.TextIOWrapper(..., 'utf-8')`
+    to force UTF-8 decoding regardless of locale.
+
+    Before the fix: this test failed with `UnicodeDecodeError: 'ascii'
+    codec can't decode byte 0xd9 in position 0` on POSIX locales set to
+    C / POSIX.
+    """
+    text = "السلام عليكم"
+    raw = text.encode("utf-8")
+    result = _run_cli_bytes(stdin_bytes=raw)
+    assert result.returncode == 0, (
+        f"CLI failed with UTF-8 bytes: stderr={result.stderr.decode('utf-8', 'replace')!r}"
+    )
+    out = result.stdout.decode("utf-8")
+    # Output must be Arabic-shaped (presentation forms present).
+    assert any(0xFE70 <= ord(c) <= 0xFEFF for c in out), (
+        f"Arabic shaping did not happen in CLI output: {out!r}"
+    )
+
+
+def test_stdin_utf8_bytes_with_tashkeel() -> None:
+    """Tashkeel-bearing UTF-8 bytes also decode correctly.
+
+    Tashkeel codepoints (U+064B–U+065F) are 2-byte UTF-8 sequences with
+    non-ASCII high bytes; if the CLI were using ASCII as its stdin
+    encoding it would either crash or silently drop them.
+    """
+    text = "مَرْحَبًا"
+    raw = text.encode("utf-8")
+    result = _run_cli_bytes(stdin_bytes=raw)
+    assert result.returncode == 0
+    out = result.stdout.decode("utf-8")
+    # Tashkeel codepoints must survive in the output.
+    out_cps = {ord(c) for c in out}
+    for cp in (0x064E, 0x0652, 0x064B):
+        assert cp in out_cps, (
+            f"tashkeel U+{cp:04X} dropped from UTF-8 stdin output: {out!r}"
+        )
 
 
 def test_stdin_empty_string_writes_empty_stdout() -> None:

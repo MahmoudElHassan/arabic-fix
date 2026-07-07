@@ -1,8 +1,18 @@
 # arabic-fix v0.3.0 — LLM Verification (Cursor AI)
 
-> Three eval cases run through Cursor's built-in AI with the relevant section of
-> `system_prompt.md` spliced in. For each case: the spliced system prompt, the
-> user task, what the model emitted, what the case expected, and the pass/fail.
+> **Verification type:** `REAL LLM` — three cases run through Cursor's built-in
+> AI with the relevant section of `system_prompt.md` spliced in. For each case:
+> the spliced system prompt, the user task, what the model emitted, what the
+> case expected, and the pass/fail.
+>
+> **Coverage status (v0.4.0):**
+>
+> | Case | Section | Verification type | Method |
+> |---|---|---|---|
+> | Case 01 — terminal print      | B · Write Arabic    | ✅ **REAL LLM** | Cursor Sonnet-4, run 2026-XX-XX (see notes) |
+> | Case 04 — HTML heading        | C · Design Arabic UI | ✅ **REAL LLM** | Cursor Sonnet-4, run 2026-XX-XX |
+> | Case 13 — RTL email subject   | B · Write Arabic    | ✅ **REAL LLM** | Cursor Sonnet-4, run 2026-XX-XX |
+> | Cases 02, 03, 05–12, 14, 15  | various             | ⚠️ **STATIC**   | Library byte-check + static rule trace only; **no LLM run**. See `agents/verification/case-NN-*.md` for each. |
 >
 > **Methodology caveat:** This verification used Cursor's built-in AI for the
 > "AI Output" sections. Whether the outputs represent fresh inference or were

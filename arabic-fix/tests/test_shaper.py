@@ -243,3 +243,95 @@ def test_output_keeps_most_letters(text: str) -> None:
         f"reshape lost too many letters: in={letter_count_in} "
         f"out={letter_count_out} for {text!r}"
     )
+
+
+# ───────────────────────────── Thread-safety (C1) ─────────────────────────────
+
+
+def test_shape_is_thread_safe() -> None:
+    """`shape()` is safe to call from multiple threads concurrently.
+
+    The shaper caches one reshaper instance per `ligatures` value. Two
+    concerns to verify:
+
+    1. **Determinism under contention** — every thread gets the same
+       output for the same input. If the cache was racy, two threads
+       building the reshaper for the same key could produce different
+       cached instances, but each instance should still produce
+       deterministic output.
+    2. **Tashkeel preservation under contention** — the
+       `delete_harakat=False` override must persist across threads; one
+       thread reading the cache while another builds it must not see a
+       half-constructed reshaper with the default `delete_harakat=True`.
+
+    Run 16 threads × 200 calls each = 3200 reshape calls, then assert
+    every result has the right tashkeel set and every duplicate input
+    produced the same output.
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    inputs = [
+        "مَرْحَبًا",        # fatha + sukun + fatha + fathatan
+        "بِسْمِ ٱللَّهِ",   # Quran basmala
+        "السلام عليكم",
+        "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ",
+    ]
+    expected_tashkeel = {
+        "مَرْحَبًا": {0x064E, 0x0652, 0x064B},
+        "بِسْمِ ٱللَّهِ": {0x0650, 0x0652, 0x0650},
+        "السلام عليكم": set(),
+        "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ": {0x0652, 0x064F, 0x0650, 0x064E, 0x0651},
+    }
+
+    # First, capture the deterministic baseline (single-threaded).
+    baseline = {text: shape(text) for text in inputs}
+
+    # Then run a barrage of concurrent calls. 16 threads, each iterating
+    # over all 4 inputs N_CALLS times = 16 × 4 × 200 = 12,800 calls.
+    N_THREADS = 16
+    N_CALLS = 200
+    expected_total = N_THREADS * len(inputs) * N_CALLS
+    results: list[tuple[str, str]] = []
+    lock = threading.Lock()
+
+    def worker(thread_id: int) -> None:
+        local: list[tuple[str, str]] = []
+        for _ in range(N_CALLS):
+            for text in inputs:
+                local.append((text, shape(text)))
+        with lock:
+            results.extend(local)
+
+    with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
+        futures = [pool.submit(worker, i) for i in range(N_THREADS)]
+        for f in as_completed(futures):
+            f.result()  # surface any exception
+
+    # 1. Every result equals the deterministic baseline.
+    assert len(results) == expected_total, (
+        f"expected {expected_total} results, got {len(results)}"
+    )
+    for text, out in results:
+        assert out == baseline[text], (
+            f"shape() non-deterministic under contention: "
+            f"input={text!r} expected={baseline[text]!r} got={out!r}"
+        )
+
+    # 2. Tashkeel survived every thread's calls.
+    for text, expected_cps in expected_tashkeel.items():
+        if not expected_cps:
+            continue
+        sample_out = results[0][1] if results[0][0] == text else None
+        # Find any result for this text
+        for t, out in results:
+            if t == text:
+                sample_out = out
+                break
+        assert sample_out is not None
+        out_cps = {ord(c) for c in sample_out}
+        missing = expected_cps - out_cps
+        assert not missing, (
+            f"tashkeel codepoints {missing} were stripped under "
+            f"contention for {text!r}"
+        )

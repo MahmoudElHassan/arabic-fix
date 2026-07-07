@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import sys
 from pathlib import Path
 
@@ -90,8 +91,20 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if not args.paths or (len(args.paths) == 1 and str(args.paths[0]) == "-"):
-        # stdin → stdout
-        text = sys.stdin.read()
+        # stdin → stdout.
+        #
+        # `sys.stdin.read()` defaults to `locale.getpreferredencoding(False)`,
+        # which on many non-English terminals is ASCII or Latin-1 and will
+        # raise `UnicodeDecodeError` on Arabic UTF-8 bytes. Force UTF-8 by
+        # wrapping the binary buffer explicitly. This matches the encoding
+        # we use for file reads (`--encoding`, default utf-8).
+        #
+        # In tests, `sys.stdin` is sometimes monkeypatched to a `StringIO`
+        # (which has no `.buffer`); fall back to that wrapped as text.
+        if hasattr(sys.stdin, "buffer"):
+            text = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8").read()
+        else:
+            text = sys.stdin.read()
         out = _process(text, opts)
         sys.stdout.write(out)
         return 0

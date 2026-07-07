@@ -57,12 +57,25 @@ def reorder(
     str
         Display-ordered string. If `python-bidi` is missing, the input
         is returned unchanged.
+
+    Raises
+    ------
+    ValueError
+        If `base_dir` is not one of 'rtl' / 'ltr' (case-insensitive).
+        Previously this was silently passed through to `python-bidi`,
+        which would either raise an opaque error or fall back to a
+        default — masking caller bugs. Now we fail loud at the API edge.
     """
     if not text:
         return text
     if not _HAS_BIDI:
         return text
-    bidi_dir = _RTL_LTR_TO_BIDI.get(base_dir.lower(), base_dir)
+    bidi_dir = _RTL_LTR_TO_BIDI.get(base_dir.lower())
+    if bidi_dir is None:
+        raise ValueError(
+            f"unknown base_dir: {base_dir!r}; expected one of "
+            f"{sorted(_RTL_LTR_TO_BIDI)} (case-insensitive)"
+        )
     return get_display(  # type: ignore
         text,
         base_dir=bidi_dir,
