@@ -1,117 +1,68 @@
 # arabic-fix
 
-> Fix Arabic text rendering across code, AI agents, and designs — one library, one CLI, one system prompt.
+> Fix Arabic text rendering across code, AI agents, and designs.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)]()
+[![Tests](https://img.shields.io/badge/tests-169%20passing-brightgreen)]()
 
-**Arabic is spoken by 400M+ people and is the 4th most-used language on the web.**
-Yet today, every Arabic word that flows through a terminal, an AI assistant, a log file, or a PDF comes out broken — letters disconnected, words reversed, diacritics dropped.
+**One library, one CLI, one system prompt.** Letter-shaping, BiDi reordering,
+Unicode normalization, and a 3-section prompt template for any LLM. Arabic
+flows through terminals, AI agents, log files, and PDFs the way it should.
 
-**`arabic-fix`** is the missing layer that fixes this everywhere it breaks.
-
----
-
-## The 30-second pitch
-
-When Arabic text passes through modern systems that were built English-first, three things go wrong simultaneously:
-
-1. **Letter shaping is lost.** Arabic letters have 4 forms (isolated, initial, medial, final) — without shaping, you get a row of disconnected letters like `ﺍﻟﻌﺮﺑﻴﺔ` instead of `العربية`.
-2. **BiDi order breaks.** Mixed Arabic/Latin/numbers need explicit bidirectional reordering, or digits flip to the wrong side and English words land on the wrong end.
-3. **Diacritics & normalization drift.** Tashkeel (حركات) gets dropped, characters get decomposed/recomposed inconsistently across Unicode normalizations.
-
-This library solves all three with one call:
+```bash
+pip install arabic-fix
+```
 
 ```python
 from arabic_fix import fix
-print(fix("العربية"))
-# → a properly shaped, correctly ordered Arabic string
+print(fix("User 42 من الرياض at 09:30"))
+# → a properly shaped, correctly ordered, NFC-normalized string
 ```
-
-And the AI-agent prompt template teaches **any** LLM (Claude, GPT, open-weight) to output properly shaped Arabic — fixing the problem at the source for millions of generated words per day.
-
----
-
-## Quickstart
-
-### Install
 
 ```bash
-pip install -e .
+# CLI
+cat arabic.txt | arabic-fix
+arabic-fix --check file.txt          # CI mode: exit non-zero if changes needed
 ```
 
-### Use as a library
-
-```python
-from arabic_fix import fix
-text = "مرحبا بالعالم"
-fixed = fix(text)               # letter-shapes + BiDi-fixes + normalizes
-shape_only = fix(text, shape=True, bidi=False)
-bidi_only = fix(text, shape=False, bidi=True)
+```text
+# AI agent: paste one of the 3 sections from agents/system_prompt.md
+#   A · Read Arabic    — for agents that parse / summarize / classify
+#   B · Write Arabic   — for agents that emit to terminal / log / email
+#   C · Design Arabic  — for HTML / CSS / Tailwind / design tokens
 ```
 
-### Use as a CLI
+## Why
 
-```bash
-arabic-fix file.txt              # rewrite file in place
-arabic-fix file.txt -o out.txt   # write to new file
-cat input.txt | arabic-fix       # pipe from stdin
-arabic-fix --no-bidi file.txt    # shape only, skip BiDi
-```
+- **Letter shaping** — `ا ب ت` (isolated forms) become `اتصال` (connected) via
+  Unicode Presentation Forms-B.
+- **BiDi order** — `User 42 من الرياض` ends up with `42` on the visual left
+  and Arabic letters in their connected form, per UAX #9.
+- **Tashkeel preserved** — diacritics survive; `مَرْحَبًا` round-trips intact.
+- **Logical CSS only** — `margin-inline-start`, never `margin-left`.
+- **Real Arabic fonts** — Tajawal, IBM Plex Sans Arabic, Noto Naskh Arabic
+  in priority order; never Inter or Roboto.
 
-### Use as an AI-agent system prompt
+## What's in the box
 
-Copy `agents/system_prompt.md` into your LLM's system prompt.
-Now every Arabic response comes out shaped correctly by default.
-
----
-
-## What it fixes
-
-| Problem | Symptom | Tool |
-|---|---|---|
-| Letters not connected (ا ب ت instead of اتصال) | Words look broken in monospace / terminals / AI chats | `fix(..., shape=True)` |
-| Digits/English words on the wrong side of Arabic | "Hello مرحبا 123" rendered as "123 مرحبا Hello" | `fix(..., bidi=True)` |
-| Inconsistent Unicode forms (NFC vs NFD) | Same word compared unequal, hash mismatches | `fix(..., normalize=True)` |
-| Tashkeel dropped by AI | AI outputs "مدرسة" instead of "مَدْرَسَة" | `agents/system_prompt.md` |
-| Designer uses non-Arabic-friendly font | Inconsistent heights, missing ligatures, glyph fallback | `designs/font-stack.md` |
-| Layout breaks in RTL contexts | Margins flipped, icons mirrored wrong, padding off | `designs/rtl-rules.md` |
-
----
-
-## Project layout
-
-```
-arabic-fix/
-├── arabic_fix/            # Core Python library
-├── bin/arabic-fix         # CLI entry point
-├── agents/                # System-prompt templates + eval cases for AI agents
-├── designs/               # Design tokens, font stack, RTL rules
-├── docs/                  # Problem statement, before/after examples
-└── examples/              # Runnable demo + sample input/output
-```
-
----
-
-## Why this matters
-
-| Stat | Source |
+| Path | What it is |
 |---|---|
-| 400M+ native Arabic speakers | Ethnologue 2024 |
-| Arabic is the 4th most-used language on the web | W3Techs |
-| <2% of websites offer usable RTL support | BuiltWith |
-| 0 of the top 5 AI assistants shape Arabic correctly by default | Internal testing |
+| `arabic_fix/` | Python library: `fix()`, `shape()`, `reorder()`, `normalize()` |
+| `agents/system_prompt.md` | 3 splice-in-able sections for any LLM |
+| `agents/eval_cases.md` | 15 cases to verify the system prompt works |
+| `designs/tokens.json` | 73 design tokens (W3C DTCG), CSS / Tailwind / Figma exports |
+| `examples/sample-arabic-page.html` | 5 Arabic surfaces using the tokens |
+| `docs/roadmap.md` | v0.2 → v0.6 milestones |
 
-If even 10% of those numbers could read and write Arabic in software without bugs,
-this library would touch hundreds of millions of people's daily digital lives.
+## Verify
 
----
-
-## Contributing
-
-Open issues for languages that need the same treatment (Urdu, Persian, Hebrew, Pashto) —
-the same architecture applies, and PRs are welcome.
+```bash
+pytest -q                          # 169 tests
+mypy arabic_fix                    # strict, clean
+python designs/validate_tokens.py  # 73 token schema check
+```
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE). The brand `arabic-fix` is locked until v1.0.

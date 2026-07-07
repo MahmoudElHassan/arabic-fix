@@ -47,6 +47,11 @@ htmlcov/
 # Don't ignore the input — it's part of the demo
 !examples/sample_input.txt
 
+# --- Node (style-dictionary integration) ---
+examples/integrations/style-dictionary/node_modules/
+examples/integrations/style-dictionary/dist/
+examples/integrations/style-dictionary/package-lock.json
+
 # mavis harness team definitions ARE part of the project
 # (.harness/ defines who works on this repo — keep it tracked)
 # .harness/ sessions/state still excluded below

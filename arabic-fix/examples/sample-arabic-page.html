@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>arabic-fix — عينة عرض</title>
+
+  <!--
+    This sample page demonstrates arabic-fix design tokens in real use.
+    It links the auto-generated CSS variables from the
+    style-dictionary integration:
+
+        ../integrations/style-dictionary/dist/css/all.css
+
+    All `var(--*)` references below resolve to those tokens. The
+    page itself is a working proof: open it in a browser to see the
+    tokens in action.
+  -->
+  <link rel="stylesheet" href="../integrations/style-dictionary/dist/css/all.css">
+
+  <style>
+    /* ── Semantic color aliases (light + dark) ─────────────────
+       The generated CSS exposes every color in two flavors with
+       -light / -dark suffixes. We define a small set of semantic
+       aliases here so component CSS only references --fg, --bg,
+       etc. and the data-theme switch (light ↔ dark) flips them
+       without touching the rest of the page.                       */
+    :root {
+      --fg:           var(--color-text-primary-light);
+      --fg-muted:     var(--color-text-muted-light);
+      --bg:           var(--color-surface-base-light);
+      --bg-elevated:  var(--color-surface-raised-light);
+      --bg-code:      var(--color-surface-sunken-light);
+      --fg-code:      var(--color-text-primary-light);
+      --border:       var(--color-border-subtle-light);
+      --accent-bg:    var(--color-accent-primary-light);
+      --accent-fg:    var(--color-text-inverse-light);
+      --warning-bg:   var(--color-accent-danger-light);
+      --warning-fg:   var(--color-text-inverse-light);
+    }
+    [data-theme="dark"] {
+      --fg:           var(--color-text-primary-dark);
+      --fg-muted:     var(--color-text-muted-dark);
+      --bg:           var(--color-surface-base-dark);
+      --bg-elevated:  var(--color-surface-raised-dark);
+      --bg-code:      var(--color-surface-sunken-dark);
+      --fg-code:      var(--color-text-primary-dark);
+      --border:       var(--color-border-subtle-dark);
+      --accent-bg:    var(--color-accent-primary-dark);
+      --accent-fg:    var(--color-text-inverse-dark);
+      --warning-bg:   var(--color-accent-danger-dark);
+      --warning-fg:   var(--color-text-inverse-dark);
+    }
+
+    /* ── Reset / base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-family-arabic-body);
+      font-size: var(--font-size-body-base);
+      line-height: var(--font-line-height-arabic);
+      color: var(--fg);
+      background: var(--bg);
+      text-align: start;
+      direction: rtl;
+    }
+    main {
+      max-width: 880px;
+      margin-inline: auto;
+      padding: var(--spacing-direction-container-padding-block)
+               var(--spacing-direction-container-padding-inline);
+    }
+    h1, h2, h3 { font-family: var(--font-family-arabic-display); }
+    h1 { font-size: var(--font-size-display-xl); line-height: 1.2; margin-block-end: var(--spacing-direction-block-end-md); }
+    h2 { font-size: var(--font-size-heading-lg); line-height: 1.3; margin-block-end: var(--spacing-direction-block-end-md); }
+    p  { margin-block-end: var(--spacing-direction-block-end-md); }
+    a  { color: var(--accent-bg); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── Theme toggle (light / dark) ─────────────────────────── */
+    .theme-toggle {
+      position: fixed;
+      inset-block-start: 16px;
+      inset-inline-end: 16px;
+      font-family: var(--font-family-arabic-body);
+      font-size: var(--font-size-body-sm);
+      padding: var(--spacing-direction-inline-start-sm)
+               var(--spacing-direction-inline-end-sm);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      color: var(--fg);
+      cursor: pointer;
+    }
+
+    /* ── Section card ─────────────────────────────────────────── */
+    section {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: var(--spacing-direction-container-padding-block)
+               var(--spacing-direction-container-padding-inline);
+      margin-block-end: var(--spacing-direction-gutter-lg);
+    }
+    section h2 { margin-block-start: 0; }
+
+    /* ── Table ────────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--font-size-body-sm);
+    }
+    th, td {
+      padding: var(--spacing-direction-block-start-md)
+               var(--spacing-direction-inline-start-md);
+      text-align: start;
+      border-block-end: 1px solid var(--border);
+    }
+    th { font-weight: var(--font-weight-arabic-semibold); }
+    td.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+
+    /* ── Form ─────────────────────────────────────────────────── */
+    label {
+      display: block;
+      margin-block-end: var(--spacing-direction-inline-end-xs);
+      font-weight: var(--font-weight-arabic-semibold);
+    }
+    input[type="text"], input[type="email"] {
+      width: 100%;
+      font-family: var(--font-family-arabic-body);
+      font-size: var(--font-size-body-base);
+      padding: var(--spacing-direction-inline-start-sm);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--fg);
+      direction: rtl;
+    }
+    input[type="email"] { direction: ltr; unicode-bidi: isolate; text-align: start; }
+    .form-row { margin-block-end: var(--spacing-direction-block-end-md); }
+    button[type="submit"] {
+      font-family: var(--font-family-arabic-body);
+      font-size: var(--font-size-body-base);
+      font-weight: var(--font-weight-arabic-semibold);
+      padding: var(--spacing-direction-inline-start-sm)
+               var(--spacing-direction-inline-end-md);
+      background: var(--accent-bg);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* ── Code ─────────────────────────────────────────────────── */
+    pre {
+      font-family: var(--font-family-arabic-mono);
+      font-size: var(--font-size-body-sm);
+      background: var(--bg-code);
+      color: var(--fg-code);
+      padding: var(--spacing-direction-container-padding-block)
+               var(--spacing-direction-container-padding-inline);
+      border-radius: 6px;
+      overflow-x: auto;
+      direction: ltr;
+      text-align: start;
+    }
+    code { font-family: var(--font-family-arabic-mono); }
+
+    /* ── BANNED warning ──────────────────────────────────────── */
+    .banned {
+      display: inline-block;
+      padding: 4px 8px;
+      background: var(--warning-bg);
+      color: var(--warning-fg);
+      border-radius: 4px;
+      font-size: var(--font-size-body-sm);
+      font-weight: var(--font-weight-arabic-semibold);
+    }
+
+    /* ── Bidi-isolated inline runs ───────────────────────────── */
+    bdi { unicode-bidi: isolate; }
+
+    footer {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: var(--font-size-body-sm);
+      padding-block: var(--spacing-direction-block-end-md);
+    }
+  </style>
+</head>
+
+<body data-theme="light">
+
+  <button class="theme-toggle" type="button" onclick="
+    (() => {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.body.setAttribute('data-theme', next);
+    })()
+  ">تبديل الوضع</button>
+
+  <main>
+
+    <header>
+      <h1>عينة عرض <code dir="ltr">arabic-fix</code></h1>
+      <p>
+        صفحة تجريبية تعرض <strong>73</strong> token من
+        <code dir="ltr">designs/tokens.json</code>
+        عبر خمس واجهات عربية حقيقية. كل
+        <code dir="ltr">var(--*)</code>
+        هنا بيرجع لقيمة من ملف الـ tokens.
+      </p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 1: Headings
+         Uses: --font-family-arabic-display, --font-size-display-xl,
+               --font-size-heading-lg, --font-weight-arabic-bold
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>١. العناوين</h2>
+      <h1>السلام عليكم</h1>
+      <h2>أهلاً بكم في <bdi>arabic-fix</bdi></h2>
+      <h3>عنوان فرعي — Tajawal Bold</h3>
+      <p>
+        الخط <code>Tajawal</code> بـ <code>--font-weight-arabic-bold = 700</code> —
+        أعرض من اللاتيني في نفس الوزن لأن العربي بيحتاج مساحة بصرية أكبر.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 2: Body paragraph
+         Uses: --font-family-arabic-body, --font-size-body-base,
+               --font-line-height-arabic, --typography-word-spacing
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>٢. الفقرة</h2>
+      <p>
+        هذا نص تجريبي لاختبار عرض الفقرات العربية بـ
+        <code>--font-size-body-base = 16px</code> و
+        <code>--font-line-height-arabic = 1.7</code>.
+        الـ line-height أعلى من اللاتيني (1.5) لأن التشكيل (فتحة، كسرة، ضمة، سكون)
+        محتاج مساحة رأسية إضافية للتنفس البصري.
+      </p>
+      <p>
+        اتصل على <bdi>user@example.com</bdi> أو زُر
+        <bdi>https://arabic-fix.example</bdi>
+        لمزيد من المعلومات. لاحظ إن
+        <code>&lt;bdi&gt;</code>
+        بيعزل الرابط عن السياق العربي فيمنع
+        BiDi algorithm من تفكيكه.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 3: Table
+         Uses: --font-size-body-sm, tabular-nums for numeric cols,
+               --color-border-default, bidi-isolate for numbers
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>٣. الجدول</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>المدينة</th>
+            <th>عدد السكان</th>
+            <th>النسبة</th>
+            <th>كود المنطقة</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>الرياض</td>
+            <td class="num">7,700,000</td>
+            <td class="num">23.8%</td>
+            <td dir="ltr" class="num">+966-11</td>
+          </tr>
+          <tr>
+            <td>جدة</td>
+            <td class="num">4,700,000</td>
+            <td class="num">14.5%</td>
+            <td dir="ltr" class="num">+966-12</td>
+          </tr>
+          <tr>
+            <td>القاهرة</td>
+            <td class="num">10,100,000</td>
+            <td class="num">10.2%</td>
+            <td dir="ltr" class="num">+20-2</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-block-start: var(--spacing-direction-block-end-md); color: var(--color-fg-muted); font-size: var(--font-size-body-sm);">
+        الأرقام في عمود <code>class="num"</code> معزولة بـ
+        <code>unicode-bidi: isolate</code> و
+        <code>direction: ltr</code>
+        عشان تتعرض بشكل صحيح في سياق عربي.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 4: Form
+         Uses: --font-size-body-base, --font-weight-arabic-semibold,
+               logical padding, dir="auto" on email input
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>٤. النموذج</h2>
+      <form onsubmit="event.preventDefault(); alert('شكراً، تم استلام البيانات');">
+        <div class="form-row">
+          <label for="name">الاسم الكامل</label>
+          <input type="text" id="name" placeholder="أحمد محمد">
+        </div>
+        <div class="form-row">
+          <label for="email">البريد الإلكتروني</label>
+          <input type="email" id="email" dir="auto" placeholder="user@example.com">
+        </div>
+        <button type="submit">إرسال</button>
+      </form>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 5: Code
+         Uses: --font-family-arabic-mono, --color-bg-code,
+               --font-size-body-sm
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>٥. الكود</h2>
+      <p>
+        مثال سريع لاستخدام <code>arabic_fix</code> في Python:
+      </p>
+      <pre><code>from arabic_fix import fix
+
+msg = fix("السلام عليكم — User 42 من الرياض")
+print(msg)
+# Output: shaped + BiDi-reordered + NFC-normalized string</code></pre>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         Surface 6 (bonus): BANNED letter-spacing warning
+         ════════════════════════════════════════════════════════ -->
+    <section dir="rtl" lang="ar">
+      <h2>٦. تنبيه: <code>letter-spacing</code> ممنوع على العربي</h2>
+      <p>
+        الـ token <code>--typography-letter-spacing-arabic = 0</code> ومحدد كـ
+        <code>banned: true</code>. ضبطه &gt; 0 على نص عربي:
+      </p>
+      <ul>
+        <li>بيضيف مساحة على الجانب الغلط في RTL.</li>
+        <li>بيضرب الـ baseline العربي.</li>
+        <li>بيتصادم مع OpenType ligatures (لا، الله).</li>
+      </ul>
+      <p>
+        <span class="banned">بديل:</span>
+        استخدم <code>--typography-word-spacing-arabic</code> بدالاً منه.
+        الـ linter (v0.5.0) هيرفض أي stylesheet بيخالف ده.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        عينة من <code dir="ltr">arabic-fix</code> —
+        <a href="../integrations/style-dictionary/README.md">Style Dictionary integration</a>
+        ·
+        <a href="../../designs/tokens.README.md">Token reference</a>
+      </p>
+    </footer>
+
+  </main>
+
+</body>
+</html>

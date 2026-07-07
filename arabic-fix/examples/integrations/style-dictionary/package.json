@@ -1,0 +1,14 @@
+{
+  "name": "arabic-fix-style-dictionary",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Style Dictionary integration for arabic-fix design tokens. Exports tokens.json → CSS variables, Tailwind config, and Figma-compatible JSON.",
+  "scripts": {
+    "build": "style-dictionary build --config ./sd.config.js",
+    "clean": "rm -rf dist",
+    "verify": "node ./verify.cjs"
+  },
+  "dependencies": {
+    "style-dictionary": "^4.0.0"
+  }
+}
