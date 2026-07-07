@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arabic-fix.dev/designs/tokens.schema.json",
+  "title": "arabic-fix design tokens",
+  "description": "Pure-JSON design tokens for Arabic UI. Follows the W3C Design Tokens Community Group ($value/$type/$description) format with Style Dictionary 3+ compatibility. Five top-level categories: font, spacing-direction, typography, color, motion.",
+  "type": "object",
+  "required": ["font", "spacing-direction", "typography", "color", "motion"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "font":               { "$ref": "#/$defs/category" },
+    "spacing-direction":  { "$ref": "#/$defs/category" },
+    "typography":         { "$ref": "#/$defs/category" },
+    "color":              { "$ref": "#/$defs/category" },
+    "motion":             { "$ref": "#/$defs/category" }
+  },
+  "$defs": {
+    "category": {
+      "description": "A top-level token category. Contains nested groups; leaf nodes are tokens.",
+      "type": "object",
+      "patternProperties": {
+        "^[a-z][a-z0-9-]*$": {
+          "oneOf": [
+            { "$ref": "#/$defs/category" },
+            { "$ref": "#/$defs/token" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "token": {
+      "description": "A single design token (leaf node). Uses W3C DTCG format: $value + $type, plus optional $description and $extensions.",
+      "type": "object",
+      "required": ["$value", "$type"],
+      "additionalProperties": false,
+      "properties": {
+        "$value":       { "description": "Token value. Type-validated by $type." },
+        "$type":        {
+          "type": "string",
+          "enum": [
+            "fontFamily",
+            "fontWeight",
+            "dimension",
+            "fontSize",
+            "lineHeight",
+            "duration",
+            "cubicBezier",
+            "color",
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "$description": { "type": "string", "description": "Human-readable meaning / usage." },
+        "$extensions": {
+          "type": "object",
+          "description": "Custom metadata. Used to flag BANNED tokens, mode (light/dark), RTL behavior, etc.",
+          "additionalProperties": true,
+          "properties": {
+            "mode":     { "type": "string", "enum": ["light", "dark"] },
+            "rtl":      { "type": "string", "enum": ["auto-flip", "ltr-only", "rtl-only", "mirror"] },
+            "banned":   { "type": "boolean", "description": "When true, downstream linters should flag any non-zero use." },
+            "category": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
