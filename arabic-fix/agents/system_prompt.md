@@ -1,6 +1,6 @@
 ---
 name: arabic-fix-system-prompt
-version: 0.2.0
+version: 0.3.1
 split_into: [read, write, design]
 applies_to:
   - LLM chat assistants generating Arabic for users
@@ -105,10 +105,15 @@ applies_to:
    cannot do the shaping itself; emit code that pipes through
    `arabic_fix.fix()`:
 
-   ```python
-   from arabic_fix import fix
-   arabic_text = fix(arabic_text)   # shape + BiDi + NFC normalize
-   ```
+```python
+    from arabic_fix import fix
+    arabic_text = fix(arabic_text)   # shape + NFC normalize + LRM isolation for LTR runs
+    ```
+
+    **Important:** `fix()` does **not** reorder code bytes for BiDi — it
+    adds presentation forms and LRM/RLM marks. Display reordering happens
+    at the render layer (terminal BiDi algorithm, mail-client renderer,
+    browser UAX #9). Source code stays in logical order.
 
    If you (the model) are writing code that emits Arabic to terminal,
    log, PDF, JSON, or any non-Web target, emit a code snippet that pipes
@@ -154,7 +159,7 @@ applies_to:
 | Outputting Arabic in reversed code order | BiDi order works at display, NOT at code time | Code order = logical order; `fix()` reorders at runtime |
 | `print("العربية")` direct to terminal on macOS / Linux without `fix()` | Terminal renders unconnected glyphs | `print(fix("العربية"))` |
 | Raw NFD output | NFD breaks shaping in terminals that expect NFC | Always emit NFC |
-| Embedding a URL inside an Arabic string without LRM / spacing | BiDi pulls the URL apart in terminal display | Wrap in ` ‎ ... ‎ ` (LRM marks) or rely on `fix()` isolation |
+| Embedding a URL inside an Arabic string without LRM / spacing | BiDi pulls the URL apart in terminal display | **When piping through `fix()`:** the library adds LRM marks automatically — no manual wrapping needed. **When NOT using `fix()`:** wrap the LTR fragment in LRM marks (`‎` U+200E) on both sides, or surround with spaces. |
 
 ### B.3 Self-check (write)
 
@@ -199,11 +204,14 @@ applies_to:
    Logical properties auto-flip when `dir="rtl"` is on, which means the
    same stylesheet works for Arabic and English.
 
-4. **Pick a font that has Arabic glyphs.** `Inter`, `Roboto`, `Helvetica`
-   have no Arabic glyphs and silently fall back to system fonts. Use a
-   production-grade Arabic font stack from `designs/font-stack.md`:
+4. **Pick a font with real Arabic coverage.** `Inter` (since v3.0, 2020),
+   `Roboto` (since 2015), and `Helvetica World / Neue Helvetica Arabic` all
+   ship *partial* Arabic glyph coverage that varies by weight and version —
+   they are not "no Arabic" but they have gaps. For production Arabic UI,
+   prefer purpose-built families from `designs/font-stack.md`:
    `Tajawal`, `IBM Plex Sans Arabic`, `Noto Naskh Arabic`, `Cairo`,
-   `Vazirmatn`, `Amiri`.
+   `Vazirmatn`, `Amiri`. These cover all six Arabic plural-glyph forms and
+   the full U+0600–06FF + U+0750–077F + U+FB50–FDFF + U+FE70–FEFF ranges.
 
 5. **No `letter-spacing` on Arabic.** In RTL, `letter-spacing` adds space
    on the wrong side and breaks the Arabic baseline. Use `word-spacing`
@@ -224,7 +232,7 @@ applies_to:
 | Pattern | Why it's wrong | Replace with |
 |---|---|---|
 | `<p>مرحبا</p>` (no `dir="rtl"`) | Browser falls back to LTR; BiDi breaks at line break | `<p dir="rtl" lang="ar">مرحبا</p>` |
-| `class="ar" { font-family: 'Inter', sans-serif; }` | Inter has no Arabic glyphs | `font-family: 'Tajawal', 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', sans-serif;` |
+| `class="ar" { font-family: 'Inter', sans-serif; }` | Inter has partial Arabic coverage with weight-dependent gaps | `font-family: 'Tajawal', 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', sans-serif;` |
 | `.ar { letter-spacing: 0.05em; }` | Adds space on wrong side in RTL | Use `word-spacing` if needed |
 | `.ar { margin-left: 16px; }` | Hard-codes LTR direction | `margin-inline-start: 16px;` |
 | `.ar { text-align: left; }` | Last word of Arabic line goes wrong | `text-align: start;` |

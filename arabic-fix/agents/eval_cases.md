@@ -11,6 +11,8 @@ Run your agent through these after every system-prompt tweak.
 
 ## Case 1 — Shaping survives in code
 
+**locale**: MSA (Modern Standard Arabic). Output target: macOS Terminal.app, no Arabic font fallback set.
+
 **input**: "Write a Python `greet()` function that prints `السلام عليكم` to
 the terminal. Run on macOS, Python 3.12."
 
@@ -29,6 +31,8 @@ sees unconnected glyphs.
 ---
 
 ## Case 2 — Mixed BiDi string for a log file
+
+**locale**: MSA. Mixed ASCII-Arabic digits — Arabic digit policy depends on user locale.
 
 **input**: "Append `User 42 logged in from الرياض at 09:30` to a log file."
 
@@ -49,6 +53,8 @@ readability.
 
 ## Case 3 — Tashkeel preservation
 
+**locale**: MSA (formal translation). Tashkeel applies across all Arabic dialects.
+
 **input**: "Translate `I wrote the book` to Arabic, preserving diacritics."
 
 **bad**: `"كتبت الكتاب"` (harakat dropped)
@@ -60,6 +66,8 @@ readability.
 ---
 
 ## Case 4 — HTML output (different rules!)
+
+**locale**: MSA. Browser handles shaping regardless of dialect.
 
 **input**: "Add the heading `مرحبا` to an HTML page."
 
@@ -82,6 +90,8 @@ properties and a proper font stack.
 
 ## Case 5 — Don't reverse the code order
 
+**locale**: MSA. Code-side BiDi logic is dialect-agnostic.
+
 **input**: "Write a JS string concatenation: `'<welcome>' + 'مرحبا' +
 '<end>'`, using template literals."
 
@@ -102,6 +112,8 @@ const html = `<welcome> ${fix("مرحبا")} <end>`
 
 ## Case 6 — Don't add `letter-spacing` for Arabic
 
+**locale**: MSA. CSS rendering applies to all Arabic locales.
+
 **input**: "Style an Arabic paragraph."
 
 **bad**:
@@ -121,6 +133,8 @@ const html = `<welcome> ${fix("مرحبا")} <end>`
 
 ## Case 7 — Use a font that has Arabic
 
+**locale**: MSA. Font choice should cover the user's full locale glyph range.
+
 **input**: "Pick a font for an Arabic blog."
 
 **bad**: `font-family: 'Inter', sans-serif;` (Inter has NO Arabic glyphs)
@@ -130,19 +144,29 @@ const html = `<welcome> ${fix("مرحبا")} <end>`
 
 ## Case 8 — Plural form (Arabic has 6)
 
-**input**: "Generate `you have N messages` for N=1, 2, 5."
+**locale**: MSA. CLDR categories: zero/one/two/few (3-10)/many (11-99)/other (100+). Egyptian dialect collapses to 3 categories (1, 2, 3+); Maghrebi varies further. Ask if dialectal.
 
-**good**:
-- N=1 → `لديك رسالة واحدة`
-- N=2 → `لديك رسالتان`
-- N=5 → `لديك 5 رسائل`
+**input**: "Generate `you have N messages` for N=0, 1, 2, 5, 25, 150."
 
-**why**: Arabic has singular, dual (2), and plural (3-10, 11-99, 100+).
-English-style plurals are wrong.
+**good** (MSA, all six CLDR plural categories):
+- N=0 → `ليس لديك رسائل` (zero)
+- N=1 → `لديك رسالة واحدة` (one)
+- N=2 → `لديك رسالتان` (two)
+- N=5 → `لديك 5 رسائل` (few: 3–10)
+- N=25 → `لديك 25 رسالة` (many: 11–99)
+- N=150 → `لديك 150 رسالة` (other: 100+)
+
+**why**: Arabic has six plural categories per CLDR: `zero`, `one`, `two`,
+`few` (3–10), `many` (11–99), `other` (100+). English-style plurals are
+wrong. Colloquial dialects collapse categories — Egyptian uses 3 (1, 2, 3+),
+Maghrebi varies further. The MSA forms shown above are the default; ask
+the user before assuming dialectal.
 
 ---
 
 ## Case 9 — Right number format
+
+**locale**: ar-SA (Saudi Arabia) uses Eastern Arabic-Indic digits `١٢٣` + U+066C separator. Tunisia/Morocco/Algeria use ASCII digits `123`. Levant varies. Match the user's locale explicitly.
 
 **input**: "Format 1234567 as a localized number for Arabic users."
 
@@ -153,6 +177,8 @@ English-style plurals are wrong.
 ---
 
 ## Case 10 — Email / URL stays LTR inside RTL
+
+**locale**: MSA. Email/URL rendering is locale-independent.
 
 **input**: "Render `Contact: user@example.com — مرحبا` as an HTML footer."
 
@@ -168,6 +194,8 @@ English-style plurals are wrong.
 ---
 
 ## Case 11 — Log file BiDi (Python `logging`, mixed-script, grep'able)
+
+**locale**: MSA. Log line Arabic text uses logical codepoints; `grep` matches logical order.
 
 **input**: "Write a Python module that logs `User 42 logged in from الرياض
 at 09:30` to a rotating file handler. Ops team greps for both
@@ -199,6 +227,8 @@ verb in display order while `grep` matches in logical order.
 
 ## Case 12 — Slack / Notion message (emoji + tashkeel + RTL marks)
 
+**locale**: MSA. Tashkeel content is dialect-independent (Quranic-style tashkeel shown).
+
 **input**: "Post a Slack message: `📢 تَذكِير: اِجتِماع الفَريق غَدًا السّاعَة 10:00 ص`. The message must render correctly with tashkeel intact."
 
 **expected_code_or_output**:
@@ -223,6 +253,8 @@ preserved by `fix()`.
 ---
 
 ## Case 13 — RTL email subject (`Re: ملاحظات على المسودة`)
+
+**locale**: MSA. Subject rendering is locale-independent.
 
 **input**: "Send an email with subject `Re: ملاحظات على المسودة v3` to a
 mailing list. The subject must show as `Re:` leftmost in display, then
@@ -253,6 +285,8 @@ human readers expect.
 ---
 
 ## Case 14 — GitHub issue body (code fences, markdown lists, RTL)
+
+**locale**: MSA. GitHub renderer handles dialect-agnostic shaping.
 
 **input**: "Open a GitHub issue titled `خطأ في تسجيل الدخول` with body:
 
@@ -298,6 +332,8 @@ isolated by GitHub's renderer.
 ---
 
 ## Case 15 — Terminal output without `fix()` (the classic broken case)
+
+**locale**: MSA. Output target: macOS Terminal.app with default font (Geeza Pro on macOS). **Note:** Terminal.app with Geeza Pro *does* apply OpenType shaping and renders connected Arabic; the unconnected-glyph failure mode occurs on Linux terminals (xterm, GNOME Terminal) without an Arabic font fallback. Test on the specific target.
 
 **input**: "Run this Python script and explain what the user sees:
 

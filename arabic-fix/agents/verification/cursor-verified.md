@@ -4,7 +4,18 @@
 > `system_prompt.md` spliced in. For each case: the spliced system prompt, the
 > user task, what the model emitted, what the case expected, and the pass/fail.
 >
-> **Summary:** 3 / 3 PASS (acceptance was 2/3).
+> **Methodology caveat:** This verification used Cursor's built-in AI for the
+> "AI Output" sections. Whether the outputs represent fresh inference or were
+> inferred from training-data familiarity with these canonical Arabic patterns
+> is not independently verified. Treat this as **high-confidence validation**
+> of the prompt sections (the AI respected the load-bearing B/C distinction —
+> `fix()` for non-Web, no `fix()` for Web), not as a strict regression suite.
+> v0.4.0 will add formal regression tests against a real LLM endpoint with a
+> pinned model version, byte-level output capture, and negative-case coverage.
+>
+> **Summary:** 3 / 3 PASS (acceptance was 2/3). Cross-section discipline verified:
+> in Case 4 the AI did **not** call `fix()` for the Web target, while in Cases 1
+> and 13 the AI **did** call `fix()` for the non-Web terminal and email targets.
 
 ---
 
