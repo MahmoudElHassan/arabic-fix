@@ -90,6 +90,21 @@ def main(argv: list[str] | None = None) -> int:
         ligatures=not args.no_ligatures,
     )
 
+    # `--output` without positional inputs is a footgun. Without this guard,
+    # `arabic-fix --output foo.txt` (no positional) silently does the wrong
+    # thing: the stdin branch below runs and writes to stdout, ignoring
+    # `--output` entirely. The user thinks they wrote `foo.txt`, but they
+    # didn't. Fail loud before that branch can run.
+    # Fix from v0.4.0 code review (P0.3, Cursor AI).
+    if args.output and not args.paths:
+        print(
+            "error: --output requires at least one input file. "
+            "Use '-' to read from stdin (output goes to stdout), "
+            "or omit --output to write in place.",
+            file=sys.stderr,
+        )
+        return 2
+
     if not args.paths or (len(args.paths) == 1 and str(args.paths[0]) == "-"):
         # stdin → stdout.
         #

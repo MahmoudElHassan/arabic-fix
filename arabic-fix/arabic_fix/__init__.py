@@ -10,4 +10,4 @@ from __future__ import annotations
 from .fixer import fix, fix_report, FixOptions, FixReport
 
 __all__ = ["fix", "fix_report", "FixOptions", "FixReport"]
-__version__ = "0.2.0"
+__version__ = "0.4.0"

@@ -5,25 +5,29 @@
 
 ## State
 
-- **Current milestone:** v0.3.0 — system prompt rewrite + eval expansion +
-  verification (delivered 2026-07-07).
-- **Commits:** `ad651b3` (verification+tar), `4f62dc4` (eval), `98f6ecd`
-  (prompts), on top of `47de8f7` (v0.2.0).
-- **Tests:** 159 passing (`pytest -q`); mypy strict clean.
-- **Tarball:** `arabic-fix.tar.gz` rebuilt, 64 KB, 63 files.
+- **Current milestone:** v0.4.0 — design tokens + first public PyPI release
+  (delivered 2026-07-08).
+- **Commits:** `6cdf519` (G1+G2+G3 stop-condition), `b917a94` (P0 quick wins
+  from Cursor review), `76445d3` / `91108c8` (Phase A tokens + tarball),
+  on top of `51733bf` (v0.3.1 hotfix).
+- **Tests:** 169 passing (`pytest -q`); mypy strict clean.
+- **PyPI:** v0.4.0 published at https://pypi.org/project/arabic-fix/.
+- **Tarball:** `arabic-fix.tar.gz` rebuilt, 116 KB, 62 files (legacy —
+  PyPI is now the source of truth; revisit in v0.5.0 per Cursor review).
 
 ## v0.3.0 layout
 
 ```
 agents/
   system_prompt.md         # 3 sections: A Read, B Write, C Design
-                           # version 0.2.0, split_into: [read, write, design]
+                           # version 0.3.1, split_into: [read, write, design]
                            # each section standalone paste-able
   eval_cases.md            # 15 cases (10 original + 5 new for v0.3.0)
   verification/
     case-01-terminal-print.md
     case-04-html-heading.md
     case-13-rtl-email-subject.md
+    cursor-verified.md     # 3/3 cases via Cursor AI; dates still placeholder
 ```
 
 ## v0.3.0 verification limitation
@@ -45,6 +49,39 @@ documented in each verification file.
   exports).
 - README rewrite (60-second-onboarding).
 - First PyPI release as `arabic-fix` v0.4.0.
+
+## Architecture review (2026-07-08, pre-Cursor)
+
+Empirical checks run before handing the project to Cursor for review.
+Findings saved here so future agents don't re-litigate them.
+
+### Pipeline order (normalize → shape → bidi) — confirmed correct
+- For NFC-clean input, `n + s + b == s + b` (normalize is a noop).
+- For NFD input (e.g. macOS-exported strings), normalize is the guard
+  against representation drift before shaping.
+- Don't reorder without explicit reason. The order is in `fixer._apply()`.
+
+### `fix()` is NOT idempotent — load-bearing property
+- `fix(fix(x)) != fix(x)` — verified empirically.
+- Implication: `--check` mode in CLI does catch double-fix, because the
+  second pass still produces different bytes than the first. So the
+  v0.4.0 review concern ("--check silently says fine on already-broken
+  input") is LESS severe than intuition suggested.
+- Document this behavior if it ever matters to callers; right now it's
+  a load-bearing property, not a bug.
+
+### P1.5 — FixOptions does NOT validate at construction
+- `FixOptions(normalize_form="bogus")` does NOT raise.
+- Validation only happens in `_coerce_options()` at `fix()` call time.
+- Direct FixOptions construction (e.g. from a config file or library
+  internal call) lets bad values through, which then either get caught
+  later by `unicodedata.normalize()` (cryptic error) or by `python-bidi`
+  (cryptic error) — neither points at the actual FixOptions field.
+- **Fix:** add `__post_init__` to FixOptions that validates
+  `normalize_form in {NFC,NFD,NFKC,NFKD}` and `bidi_base_dir in {rtl,ltr}`.
+- **Status (2026-07-08):** FIXED in v0.4.0 prep commit. `__post_init__`
+  added to `FixOptions` with case-insensitive form validation and
+  bidi_base_dir normalization. Verified by Cursor AI review.
 
 ## Conventions for this repo
 

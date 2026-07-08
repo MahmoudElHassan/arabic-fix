@@ -33,6 +33,56 @@ class FixOptions:
     bidi_upper_is_rtl: bool = False
     ligatures: bool = True             # reshape-config: presentation-form ligatures
 
+    def __post_init__(self) -> None:
+        """Validate and normalize fields at construction.
+
+        Without this guard, `FixOptions(normalize_form="bogus")` silently
+        succeeds, only failing later inside `unicodedata.normalize()` (or
+        inside `python-bidi`) with a cryptic error that doesn't point at
+        the actual `FixOptions` field. Direct construction (e.g. from a
+        config file, or from library-internal code) needs the same
+        validation as the `fix(**opts)` path.
+
+        Also normalizes `bidi_base_dir`:
+        - "rtl" / "ltr" (any case) → lowercased
+        - "R" / "L" (python-bidi single-char codes) → expanded to "rtl"/"ltr"
+        - anything else → ValueError
+
+        Fix from v0.4.0 code review (P1.5, Cursor AI).
+        """
+        # --- normalize_form: accept any case, validate against the four
+        # NF forms. Match the case-insensitive behavior of normalize.py.
+        if not isinstance(self.normalize_form, str):
+            raise TypeError(
+                f"normalize_form must be str, got "
+                f"{type(self.normalize_form).__name__}"
+            )
+        n = self.normalize_form.upper()
+        if n not in {"NFC", "NFD", "NFKC", "NFKD"}:
+            raise ValueError(
+                f"normalize_form must be one of NFC/NFD/NFKC/NFKD, "
+                f"got {self.normalize_form!r}"
+            )
+        self.normalize_form = n
+
+        # --- bidi_base_dir: accept 'rtl'/'ltr' (any case) or single-char
+        # codes 'R'/'L' (python-bidi compatibility). Reject everything else.
+        if not isinstance(self.bidi_base_dir, str):
+            raise TypeError(
+                f"bidi_base_dir must be str, got "
+                f"{type(self.bidi_base_dir).__name__}"
+            )
+        b = self.bidi_base_dir
+        if b in {"R", "L"}:
+            self.bidi_base_dir = "rtl" if b == "R" else "ltr"
+        elif b.lower() in {"rtl", "ltr"}:
+            self.bidi_base_dir = b.lower()
+        else:
+            raise ValueError(
+                f"bidi_base_dir must be 'rtl' or 'ltr' (or 'R'/'L'), "
+                f"got {b!r}"
+            )
+
 
 @dataclass
 class FixReport:

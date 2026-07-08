@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "arabic-fix contributors" }
+    { name = "Mahmoud ElHassan",
+      email = "mahmoudelhassan9@gmail.com" 
+    }
 ]
 keywords = ["arabic", "rtl", "bidirectional", "reshaper", "bidi", "unicode", "i18n", "l10n"]
 classifiers = [
