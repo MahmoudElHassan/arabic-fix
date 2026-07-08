@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same ref when a new commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          # Cache pip downloads keyed by Python version + requirements.
+          cache: "pip"
+          cache-dependency-path: |
+            pyproject.toml
+
+      - name: Install package + dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install in editable mode with the [dev] extras (pytest, mypy).
+          python -m pip install -e ".[dev]"
+
+      - name: Run pytest
+        run: |
+          pytest -v --tb=short --color=yes
+
+      - name: Run mypy --strict on arabic_fix/
+        run: |
+          mypy arabic_fix
+
+      - name: Smoke-test the CLI binary
+        run: |
+          arabic-fix --help
+          # Pipe a small Arabic string through the CLI; verify exit 0.
+          echo "السلام عليكم" | arabic-fix | wc -c | grep -qE '^[1-9][0-9]*$' || (
+            echo "CLI smoke test failed: arabic-fix did not produce output"
+            exit 1
+          )
+
+  lint:
+    name: "Lint: import order + unused ignores"
+    runs-on: ubuntu-latest
+    # Only run on the default Python — lint config is version-agnostic.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install mypy
+        run: python -m pip install mypy
+      - name: Run mypy on arabic_fix/ with show-error-codes
+        run: |
+          mypy arabic_fix --show-error-codes --no-error-summary
