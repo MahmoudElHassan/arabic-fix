@@ -1,1 +1,79 @@
-# Verified locally on 2026-07-09 — restored full content
+# Publish to PyPI via Trusted Publishing
+# https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+#
+# Repo layout note (2026-07-09): the Python project lives at
+# `arabic-fix/` inside this repo (not at the repo root), so every
+# Python step does `cd arabic-fix` first.
+#
+# Setup (one-time):
+#   1. On pypi.org → arabic-fix project → Publishing → "Add a new pending publisher"
+#      Owner: MahmoudElHassan
+#      Repository: arabic-fix
+#      Workflow filename: publish.yml
+#      Environment name: pypi
+#   2. Push this file to your GitHub repo
+#   3. Tag a release: git tag vX.Y.Z && git push --tags
+#   4. CI builds the wheel + sdist and uploads via OIDC (no API token)
+#
+# No secrets stored. No token rotation. No .pypirc needed.
+
+name: publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Manual publish reason'
+        required: true
+
+jobs:
+  pypi:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/arabic-fix
+    permissions:
+      id-token: write  # Required for Trusted Publishing (OIDC)
+    defaults:
+      run:
+        working-directory: arabic-fix
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Verify version matches tag
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          TAG="${GITHUB_REF#refs/tags/v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::pyproject.toml version ($VERSION) does not match tag ($TAG)"
+            exit 1
+          fi
+          echo "Version $VERSION matches tag $TAG"
+
+      - name: Run tests (smoke check before publishing)
+        run: |
+          python -m pip install -e ".[dev]"
+          pytest -q
+          mypy --strict arabic_fix/
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Publish to PyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No `password:` needed — uses OIDC token from `id-token: write`
