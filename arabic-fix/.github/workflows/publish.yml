@@ -1,5 +1,8 @@
 # Publish to PyPI via Trusted Publishing
 # https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+# Last verified: 2026-07-09 — full content restored on `update` branch
+# (previous GitHub commit on `update` accidentally had the file emptied
+# via the web UI; this commit re-establishes the canonical workflow).
 #
 # Setup (one-time):
 #   1. On pypi.org → arabic-fix project → Publishing → "Add a new pending publisher"
